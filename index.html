@@ -1,0 +1,542 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tournament Twitch Feeds Display</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #1a202c;
+      color: white;
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 100%;
+    }
+    header {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    @supports not (backdrop-filter: blur(10px)) {
+      header {
+        background: #2d3748;
+      }
+    }
+    .form-section {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 300px;
+    }
+    .form-section div {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .form-section input[type="text"], .form-section select {
+      padding: 8px;
+      background-color: rgba(45, 55, 72, 0.8);
+      color: white;
+      border: 1px solid #4a5568;
+      border-radius: 4px;
+      width: 200px;
+    }
+    .form-section button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .add-streamer-form button {
+      background-color: #48bb78;
+      color: white;
+    }
+    .add-streamer-form button:hover {
+      background-color: #38a169;
+    }
+    .remove-match-form button {
+      background-color: #f56565;
+      color: white;
+    }
+    .remove-match-form button:hover {
+      background-color: #e53e3e;
+    }
+    .filter-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .filter-section button {
+      background-color: #3182ce;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .filter-section button:hover {
+      background-color: #2b6cb0;
+    }
+    .filter-options {
+      display: none;
+      margin-top: 10px;
+      background: rgba(45, 55, 72, 0.8);
+      backdrop-filter: blur(10px);
+      border-radius: 4px;
+      padding: 10px;
+      width: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .filter-options select {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 14px;
+    }
+    .filter-options select option {
+      background: #2d3748;
+      color: white;
+    }
+    .filter-options button {
+      margin-top: 5px;
+      width: 100%;
+    }
+    .feedback-message {
+      margin-left: 10px;
+      font-size: 14px;
+      display: none;
+    }
+    .feedback-message.success {
+      color: #48bb78;
+    }
+    .feedback-message.error {
+      color: #f56565;
+    }
+    .stream-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 10px;
+      height: auto;
+      box-sizing: border-box;
+    }
+    .stream-box {
+      position: relative;
+      background-color: #2d3748;
+      border-radius: 8px;
+      overflow: hidden;
+      height: 300px;
+    }
+    .stream-label {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .stream-player {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .donation-section {
+      text-align: center;
+    }
+    .donation-section p {
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .pagination button {
+      background-color: #3182ce;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .pagination button:hover {
+      background-color: #2b6cb0;
+    }
+    .pagination button:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+    /* Responsive adjustments */
+    @media (max-width: 1200px) {
+      .stream-container {
+        grid-template-columns: repeat(3, 1fr);
+        overflow-x: auto;
+      }
+    }
+    @media (max-width: 1000px) {
+      header {
+        flex-direction: column;
+        gap: 15px;
+      }
+      .form-section {
+        width: 100%;
+      }
+      .filter-section {
+        align-items: center;
+      }
+      .filter-options {
+        width: 100%;
+      }
+      .stream-container {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        overflow-x: auto;
+      }
+      .donation-section {
+        margin: 0;
+      }
+      .stream-box {
+        height: 250px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header with Buttons -->
+    <header>
+      <!-- Forms Section -->
+      <div class="form-section">
+        <!-- Add Streamer Form -->
+        <div class="add-streamer-form">
+          <input type="text" id="new-streamer" placeholder="Enter Twitch Channel Name">
+          <button onclick="addStreamer()">Add Streamer</button>
+          <span id="add-feedback" class="feedback-message success">Streamer Added!</span>
+        </div>
+        <!-- Remove Match Form -->
+        <div class="remove-match-form">
+          <select id="remove-match-select">
+            <option value="">Select Match to Remove</option>
+            <!-- Options will be populated dynamically -->
+          </select>
+          <button onclick="removeMatch()">Remove Match</button>
+          <span id="remove-feedback" class="feedback-message error">Match Removed!</span>
+        </div>
+      </div>
+
+      <!-- Filter Section -->
+      <div class="filter-section">
+        <button onclick="toggleFilter()">Filter Streams</button>
+        <div class="filter-options" id="filter-options">
+          <select id="filter-select" multiple>
+            <!-- Options will be populated dynamically -->
+          </select>
+          <button onclick="hideSelectedChannels()">Hide Selected</button>
+          <button onclick="showAllChannels()">Show All</button>
+        </div>
+      </div>
+
+      <!-- Donation Section -->
+      <div class="donation-section">
+        <p>Support the Tribes 3: Rivals Tournament!</p>
+        <!-- PayPal Donate Button -->
+        <form action="https://www.paypal.com/ncp/payment/BC4EF2QC9T5GA" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;">
+          <input class="pp-BC4EF2QC9T5GA" type="submit" value="Donate Now" />
+          <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
+          <section style="font-size: 0.75rem;"> Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style="height:0.875rem;vertical-align:middle;"/></section>
+        </form>
+      </div>
+    </header>
+
+    <!-- Stream Container -->
+    <div class="stream-container" id="stream-container">
+      <!-- Stream boxes will be populated dynamically -->
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="pagination" id="pagination">
+      <button id="prev-page" onclick="prevPage()" disabled>Previous</button>
+      <span id="page-info">Page 1</span>
+      <button id="next-page" onclick="nextPage()">Next</button>
+    </div>
+  </div>
+
+  <script src="https://embed.twitch.tv/embed/v1.js"></script>
+  <script>
+    // Load channels from localStorage, or use default if none exist
+    let channels = JSON.parse(localStorage.getItem('twitchChannels')) || [
+      'playb0x',
+      'cheezecaek',
+      'ta_vorpalkitty',
+      'bschrift',
+      'heavenlyjive',
+      'z4t01',
+      'wrigglespk',
+      'karolk10',
+      'splitsecondta',
+      'operationcats',
+      'simmons572',
+      'tritiumjones',
+      'beldarkk',
+      'skrooner',
+      'mikesters17',
+      'dreadtitan',
+      'visisgaming',
+      'pandoracast',
+      'isoitiro',
+      'vaxitylol',
+      'seansguitarworldbang',
+      'prizzo4real',
+      'apcizzle',
+      'slowpok3',
+      'iamyoutgaming',
+      'mastinmusic',
+      'wholovsdean',
+      'more_horchata',
+      'prj_tv',
+      'ooooo_live',
+      'lordbuschguy',
+      'gnome827',
+      'cloutac'
+    ];
+    console.log('Channels length:', channels.length); // Debug log
+    let streamCount = channels.length;
+    let hiddenChannels = JSON.parse(localStorage.getItem('hiddenChannels')) || [];
+    let currentPage = 1;
+    const itemsPerPage = 24;
+    let totalPages = Math.ceil(channels.length / itemsPerPage);
+
+    // Function to save channels and hidden channels to localStorage
+    function saveChannels() {
+      localStorage.setItem('twitchChannels', JSON.stringify(channels));
+      localStorage.setItem('hiddenChannels', JSON.stringify(hiddenChannels));
+    }
+
+    // Function to fetch stream data (placeholder, replace with API call)
+    async function fetchStreamData(page) {
+      const startIndex = (page - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const pageChannels = channels.slice(startIndex, endIndex).filter(channel => !hiddenChannels.includes(channel));
+      // Simulate API response with direct embeds for now
+      return pageChannels.map(channel => ({ user_name: channel, type: 'live' })); // Placeholder, replace with API data
+    }
+
+    // Function to render paginated stream boxes
+    async function renderStreams() {
+      const streamContainer = document.getElementById('stream-container');
+      streamContainer.innerHTML = ''; // Clear existing boxes
+      const pageData = await fetchStreamData(currentPage);
+      const visibleChannels = pageData.map(item => item.user_name);
+      console.log('Visible channels length:', visibleChannels.length); // Debug log
+      visibleChannels.forEach((channel, index) => {
+        const streamIndex = (currentPage - 1) * itemsPerPage + index + 1;
+        const streamBox = document.createElement('div');
+        streamBox.className = 'stream-box';
+        streamBox.id = `stream-${streamIndex}`;
+        streamBox.innerHTML = `
+          <div class="stream-label">Match ${streamIndex}</div>
+          <iframe class="stream-player" src="https://player.twitch.tv/?channel=${channel}&parent=t24085.github.io" allowfullscreen="true"></iframe>
+        `;
+        streamContainer.appendChild(streamBox);
+      });
+      populateRemoveDropdown();
+      populateFilterDropdown();
+      updatePagination();
+    }
+
+    // Populate the remove match dropdown
+    function populateRemoveDropdown() {
+      const select = document.getElementById('remove-match-select');
+      select.innerHTML = '<option value="">Select Match to Remove</option>';
+      channels.forEach((channel, index) => {
+        const option = document.createElement('option');
+        option.value = index + 1;
+        option.textContent = `Match ${index + 1}: ${channel}`;
+        select.appendChild(option);
+      });
+      console.log('Remove dropdown options:', select.options.length); // Debug log
+    }
+
+    // Populate the filter dropdown
+    function populateFilterDropdown() {
+      const select = document.getElementById('filter-select');
+      select.innerHTML = '';
+      channels.forEach((channel, index) => {
+        const option = document.createElement('option');
+        option.value = channel;
+        option.textContent = `Match ${index + 1}: ${channel}`;
+        select.appendChild(option);
+      });
+      console.log('Filter dropdown options:', select.options.length); // Debug log
+    }
+
+    function addStreamer() {
+      const newStreamerInput = document.getElementById('new-streamer');
+      const channelName = newStreamerInput.value.trim().toLowerCase();
+
+      if (!channelName) {
+        alert('Please enter a Twitch channel name.');
+        return;
+      }
+
+      if (channels.includes(channelName)) {
+        alert('This channel is already added.');
+        return;
+      }
+
+      streamCount++;
+      channels.push(channelName);
+      totalPages = Math.ceil(channels.length / itemsPerPage);
+      saveChannels();
+      renderStreams();
+
+      const feedback = document.getElementById('add-feedback');
+      feedback.style.display = 'inline';
+      setTimeout(() => {
+        feedback.style.display = 'none';
+      }, 2000);
+
+      newStreamerInput.value = '';
+    }
+
+    function removeMatch() {
+      const select = document.getElementById('remove-match-select');
+      const selectedIndex = parseInt(select.value);
+
+      if (!selectedIndex) {
+        alert('Please select a match to remove.');
+        return;
+      }
+
+      channels.splice(selectedIndex - 1, 1);
+      streamCount--;
+      totalPages = Math.ceil(channels.length / itemsPerPage);
+      saveChannels();
+      renderStreams();
+
+      const feedback = document.getElementById('remove-feedback');
+      feedback.style.display = 'inline';
+      setTimeout(() => {
+        feedback.style.display = 'none';
+      }, 2000);
+    }
+
+    function toggleFilter() {
+      const filterOptions = document.getElementById('filter-options');
+      filterOptions.style.display = filterOptions.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function hideSelectedChannels() {
+      const select = document.getElementById('filter-select');
+      const selectedOptions = Array.from(select.selectedOptions).map(option => option.value);
+      if (selectedOptions.length === 0) {
+        alert('Please select at least one channel to hide.');
+        return;
+      }
+      hiddenChannels = [...new Set([...hiddenChannels, ...selectedOptions])];
+      totalPages = Math.ceil((channels.length - hiddenChannels.length) / itemsPerPage);
+      saveChannels();
+      renderStreams();
+
+      const feedback = document.getElementById('remove-feedback');
+      feedback.style.display = 'inline';
+      setTimeout(() => {
+        feedback.style.display = 'none';
+      }, 2000);
+    }
+
+    function showAllChannels() {
+      hiddenChannels = [];
+      totalPages = Math.ceil(channels.length / itemsPerPage);
+      saveChannels();
+      renderStreams();
+
+      const feedback = document.getElementById('add-feedback');
+      feedback.style.display = 'inline';
+      setTimeout(() => {
+        feedback.style.display = 'none';
+      }, 2000);
+    }
+
+    function updatePagination() {
+      const prevButton = document.getElementById('prev-page');
+      const nextButton = document.getElementById('next-page');
+      const pageInfo = document.getElementById('page-info');
+      prevButton.disabled = currentPage === 1;
+      nextButton.disabled = currentPage === totalPages;
+      pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderStreams();
+      }
+    }
+
+    function nextPage() {
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderStreams();
+      }
+    }
+
+    // Initial rendering of streams on page load
+    renderStreams();
+  </script>
+</body>
+</html>
