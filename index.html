@@ -168,16 +168,28 @@
       text-align: center;
       border: none;
       border-radius: 0.25rem;
-      min-width: 11.625rem;
-      padding: 0 2rem;
-      height: 2.625rem;
+      min-width: 15rem;
+      padding: 0 1rem;
+      height: 3rem;
       font-weight: bold;
       background-color: #FFD140;
       color: #000000;
       font-family: "Helvetica Neue", Arial, sans-serif;
-      font-size: 1rem;
-      line-height: 1.25rem;
+      font-size: 0.9rem;
+      line-height: 1.2rem;
       cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .loading, .error-message {
+      text-align: center;
+      padding: 10px;
+      color: #3182ce;
+      display: none;
+    }
+    .error-message {
+      color: #f56565;
     }
     @media (max-width: 1200px) {
       .stream-container {
@@ -209,6 +221,11 @@
       .stream-box {
         height: 250px;
       }
+      .pp-BC4EF2QC9T5GA {
+        min-width: 12rem;
+        font-size: 0.8rem;
+        height: 2.5rem;
+      }
     }
   </style>
 </head>
@@ -232,7 +249,6 @@
       <div class="filter-section">
         <button onclick="toggleFilter()">Filter Streams</button>
         <div class="filter-options" id="filter-options">
-          <!-- New Live Streams Only Checkbox -->
           <div class="checkbox-item">
             <input type="checkbox" id="live-only" onchange="toggleLiveOnly()">
             <label for="live-only">Show Live Streams Only</label>
@@ -245,24 +261,27 @@
       <div class="donation-section">
         <p>Support the Tribes 3: Rivals Tournament!</p>
         <form action="https://www.paypal.com/ncp/payment/BC4EF2QC9T5GA" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;">
-          <input class="pp-BC4EF2QC9T5GA" type="submit" value="Donate Now" />
+          <input class="pp-BC4EF2QC9T5GA" type="submit" value="Support the Tribes Rivals Multi Display" />
           <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
           <section style="font-size: 0.75rem;"> Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style="height:0.875rem;vertical-align:middle;"/></section>
         </form>
       </div>
     </header>
+    <div class="loading" id="loading">Loading stream statuses...</div>
+    <div class="error-message" id="error-message"></div>
     <div class="stream-container" id="stream-container"></div>
   </div>
 
   <script src="https://embed.twitch.tv/embed/v1.js"></script>
   <script>
-    // Twitch API Credentials (Replace with your own, ideally in a backend)
-    const TWITCH_CLIENT_ID = 'YOUR_CLIENT_ID'; // Get from Twitch Developer Console
-    const TWITCH_ACCESS_TOKEN = 'YOUR_ACCESS_TOKEN'; // Get via oauth2/token endpoint
+    // Twitch API Credentials
+    const TWITCH_CLIENT_ID = 'meabi1n42pccff5rz9ujpno7ky9vlt'; // Provided Client ID
+    const TWITCH_ACCESS_TOKEN = 'YOUR_ACCESS_TOKEN'; // Replace with token from https://id.twitch.tv/oauth2/token
     // For testing, using a CORS proxy (replace with backend in production)
     const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
 
     let channels = JSON.parse(localStorage.getItem('twitchChannels')) || [
+      'twitch', 'shroud', // Added for testing live streams
       'playb0x', 'cheezecaek', 'ta_vorpalkitty', 'bschrift', 'heavenlyjive',
       'z4t01', 'wrigglespk', 'karolk10', 'splitsecondta', 'operationcats',
       'simmons572', 'tritiumjones', 'beldarkk', 'skrooner', 'mikesters17',
@@ -285,13 +304,17 @@
 
     // Fetch stream statuses from Twitch API
     async function fetchStreamStatuses(channels) {
+      const errorMessage = document.getElementById('error-message');
+      errorMessage.style.display = 'none';
       try {
+        console.time('fetchStreamStatuses');
         // Twitch API limits to 100 users per request, so chunk if necessary
         const chunkSize = 100;
         let liveChannels = [];
         for (let i = 0; i < channels.length; i += chunkSize) {
           const chunk = channels.slice(i, i + chunkSize);
           const query = chunk.map(ch => `user_login=${encodeURIComponent(ch)}`).join('&');
+          console.log('Fetching statuses for:', chunk);
           const response = await fetch(
             `${CORS_PROXY}https://api.twitch.tv/helix/streams?${query}`,
             {
@@ -302,9 +325,10 @@
             }
           );
           if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
           }
           const data = await response.json();
+          console.log('API response:', data);
           liveChannels = liveChannels.concat(data.data.map(stream => stream.user_login.toLowerCase()));
         }
         // Update streamStatuses cache
@@ -313,9 +337,13 @@
           streamStatuses[channel] = liveChannels.includes(channel.toLowerCase());
         });
         console.log('Stream statuses:', streamStatuses);
+        console.timeEnd('fetchStreamStatuses');
         return streamStatuses;
       } catch (error) {
         console.error('Error fetching stream statuses:', error);
+        errorMessage.textContent = 'Failed to fetch live streams. Showing all streams.';
+        errorMessage.style.display = 'block';
+        setTimeout(() => { errorMessage.style.display = 'none'; }, 5000);
         // Fallback: assume all streams are offline
         channels.forEach(channel => {
           streamStatuses[channel] = false;
@@ -326,13 +354,23 @@
 
     async function renderStreams() {
       const streamContainer = document.getElementById('stream-container');
+      const loading = document.getElementById('loading');
+      const errorMessage = document.getElementById('error-message');
       streamContainer.innerHTML = '';
+      loading.style.display = 'block';
+      errorMessage.style.display = 'none';
 
       // Fetch stream statuses if showLiveOnly is enabled
       let visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel));
       if (showLiveOnly) {
         await fetchStreamStatuses(channels);
         visibleChannels = visibleChannels.filter(channel => streamStatuses[channel]);
+        console.log('Filtered live channels:', visibleChannels);
+        if (visibleChannels.length === 0) {
+          errorMessage.textContent = 'No live streams found.';
+          errorMessage.style.display = 'block';
+          setTimeout(() => { errorMessage.style.display = 'none'; }, 5000);
+        }
       }
 
       console.log('Visible channels length:', visibleChannels.length);
@@ -343,7 +381,7 @@
         streamBox.id = `stream-${streamIndex}`;
         streamBox.innerHTML = `
           <div class="stream-label">Match ${streamIndex}</div>
-          <iframe class="stream-player" src="https://player.twitch.tv/?channel=${channel}&parent=t24085.github.io" allowfullscreen="true"></iframe>
+          <iframe class="stream-player" src="https://player.twitch.tv/?channel=${channel}&parent=${window.location.hostname}" allowfullscreen="true"></iframe>
         `;
         streamContainer.appendChild(streamBox);
       });
@@ -351,6 +389,7 @@
       populateFilterCheckboxes();
       // Update live-only checkbox state
       document.getElementById('live-only').checked = showLiveOnly;
+      loading.style.display = 'none';
     }
 
     function populateRemoveDropdown() {
@@ -454,7 +493,7 @@
 
     function showAllChannels() {
       hiddenChannels = [];
-      showLiveOnly = false; // Reset live-only filter
+      showLiveOnly = false;
       saveChannels();
       renderStreams();
 
