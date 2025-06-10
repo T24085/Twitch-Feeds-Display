@@ -15,6 +15,8 @@
     }
     .container {
       width: 100%;
+      display: flex;
+      flex-direction: row;
     }
     header {
       background: rgba(255, 255, 255, 0.1);
@@ -134,6 +136,8 @@
       gap: 10px;
       height: auto;
       box-sizing: border-box;
+      flex: 1;
+      padding: 10px;
     }
     .stream-box {
       position: relative;
@@ -191,6 +195,54 @@
     .error-message {
       color: #f56565;
     }
+    /* Chat Panel Styles */
+    .chat-panel {
+      position: fixed;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 300px;
+      background: rgba(45, 55, 72, 0.9);
+      backdrop-filter: blur(10px);
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+      padding: 10px;
+    }
+    @supports not (backdrop-filter: blur(10px)) {
+      .chat-panel {
+        background: #2d3748;
+      }
+    }
+    .chat-panel select {
+      padding: 8px;
+      background-color: rgba(45, 55, 72, 0.8);
+      color: white;
+      border: 1px solid #4a5568;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    .chat-panel iframe {
+      flex: 1;
+      border: none;
+      border-radius: 4px;
+    }
+    .chat-toggle {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #3182ce;
+      color: white;
+      padding: 10px;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 30;
+    }
+    .chat-toggle:hover {
+      background-color: #2b6cb0;
+    }
     @media (max-width: 1200px) {
       .stream-container {
         grid-template-columns: repeat(3, 1fr);
@@ -226,62 +278,87 @@
         font-size: 0.8rem;
         height: 2.5rem;
       }
+      .chat-panel {
+        display: none;
+        width: 100%;
+        height: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 40;
+      }
+      .chat-panel.active {
+        display: flex;
+      }
+      .chat-toggle {
+        display: block;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <header>
-      <div class="form-section">
-        <div class="add-streamer-form">
-          <input type="text" id="new-streamer" placeholder="Enter Twitch Channel Name">
-          <button onclick="addStreamer()">Add Streamer</button>
-          <span id="add-feedback" class="feedback-message success">Streamer Added!</span>
-        </div>
-        <div class="remove-match-form">
-          <select id="remove-match-select">
-            <option value="">Select Match to Remove</option>
-          </select>
-          <button onclick="removeMatch()">Remove Match</button>
-          <span id="remove-feedback" class="feedback-message error">Match Removed!</span>
-        </div>
-      </div>
-      <div class="filter-section">
-        <button onclick="toggleFilter()">Filter Streams</button>
-        <div class="filter-options" id="filter-options">
-          <div class="checkbox-item">
-            <input type="checkbox" id="live-only" onchange="toggleLiveOnly()">
-            <label for="live-only">Show Live Streams Only</label>
+    <div class="content">
+      <header>
+        <div class="form-section">
+          <div class="add-streamer-form">
+            <input type="text" id="new-streamer" placeholder="Enter Twitch Channel Name">
+            <button onclick="addStreamer()">Add Streamer</button>
+            <span id="add-feedback" class="feedback-message success">Streamer Added!</span>
           </div>
-          <div id="filter-checkboxes"></div>
-          <button onclick="hideSelectedChannels()">Hide Selected</button>
-          <button onclick="showAllChannels()">Show All</button>
+          <div class="remove-match-form">
+            <select id="remove-match-select">
+              <option value="">Select Match to Remove</option>
+            </select>
+            <button onclick="removeMatch()">Remove Match</button>
+            <span id="remove-feedback" class="feedback-message error">Match Removed!</span>
+          </div>
         </div>
-      </div>
-      <div class="donation-section">
-        <p>Support the Tribes 3: Rivals Tournament!</p>
-        <form action="https://www.paypal.com/ncp/payment/BC4EF2QC9T5GA" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;">
-          <input class="pp-BC4EF2QC9T5GA" type="submit" value="Support the Tribes Rivals Multi Display" />
-          <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
-          <section style="font-size: 0.75rem;"> Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style="height:0.875rem;vertical-align:middle;"/></section>
-        </form>
-      </div>
-    </header>
-    <div class="loading" id="loading">Loading stream statuses...</div>
-    <div class="error-message" id="error-message"></div>
-    <div class="stream-container" id="stream-container"></div>
+        <div class="filter-section">
+          <button onclick="toggleFilter()">Filter Streams</button>
+          <div class="filter-options" id="filter-options">
+            <div class="checkbox-item">
+              <input type="checkbox" id="live-only" onchange="toggleLiveOnly()">
+              <label for="live-only">Show Live Streams Only</label>
+            </div>
+            <div id="filter-checkboxes"></div>
+            <button onclick="hideSelectedChannels()">Hide Selected</button>
+            <button onclick="showAllChannels()">Show All</button>
+          </div>
+        </div>
+        <div class="donation-section">
+          <p>Support the Tribes 3: Rivals Tournament!</p>
+          <form action="https://www.paypal.com/ncp/payment/BC4EF2QC9T5GA" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;">
+            <input class="pp-BC4EF2QC9T5GA" type="submit" value="Support the Tribes Rivals Multi Display" />
+            <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
+            <section style="font-size: 0.75rem;"> Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style="height:0.875rem;vertical-align:middle;"/></section>
+          </form>
+        </div>
+      </header>
+      <div class="loading" id="loading">Loading stream statuses...</div>
+      <div class="error-message" id="error-message"></div>
+      <div class="stream-container" id="stream-container"></div>
+    </div>
+    <!-- Chat Panel -->
+    <div class="chat-panel" id="chat-panel">
+      <select id="chat-channel-select" onchange="updateChat()">
+        <option value="">Select Channel Chat</option>
+      </select>
+      <iframe id="chat-iframe" src="https://www.twitch.tv/embed/twitch/chat?parent=t24085.github.io"></iframe>
+    </div>
+    <!-- Chat Toggle Button for Mobile -->
+    <button class="chat-toggle" id="chat-toggle" onclick="toggleChat()">💬</button>
   </div>
 
   <script src="https://embed.twitch.tv/embed/v1.js"></script>
   <script>
-    // Twitch API Credentials
-    const TWITCH_CLIENT_ID = 'meabi1n42pccff5rz9ujpno7ky9vlt'; // Provided Client ID
+    // Twitch API Credentials (WARNING: Exposed in client-side code, insecure for production)
+    const TWITCH_CLIENT_ID = 'meabi1n42pccff5rz9ujpno7ky9vlt';
     const TWITCH_ACCESS_TOKEN = 'YOUR_ACCESS_TOKEN'; // Replace with token from https://id.twitch.tv/oauth2/token
-    // For testing, using a CORS proxy (replace with backend in production)
     const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
 
     let channels = JSON.parse(localStorage.getItem('twitchChannels')) || [
-      'twitch', 'shroud', // Added for testing live streams
+      'twitch', 'shroud',
       'playb0x', 'cheezecaek', 'ta_vorpalkitty', 'bschrift', 'heavenlyjive',
       'z4t01', 'wrigglespk', 'karolk10', 'splitsecondta', 'operationcats',
       'simmons572', 'tritiumjones', 'beldarkk', 'skrooner', 'mikesters17',
@@ -294,12 +371,18 @@
     let streamCount = channels.length;
     let hiddenChannels = JSON.parse(localStorage.getItem('hiddenChannels')) || [];
     let showLiveOnly = JSON.parse(localStorage.getItem('showLiveOnly')) || false;
-    let streamStatuses = {}; // Cache for stream statuses
+    let streamStatuses = {};
+    let currentChatChannel = channels[0] || 'twitch'; // Default to first channel
 
     function saveChannels() {
       localStorage.setItem('twitchChannels', JSON.stringify(channels));
       localStorage.setItem('hiddenChannels', JSON.stringify(hiddenChannels));
       localStorage.setItem('showLiveOnly', JSON.stringify(showLiveOnly));
+    }
+
+    // Validate Twitch channel name
+    function isValidTwitchChannel(channel) {
+      return /^[a-zA-Z0-9_]{4,25}$/.test(channel);
     }
 
     // Fetch stream statuses from Twitch API
@@ -308,7 +391,6 @@
       errorMessage.style.display = 'none';
       try {
         console.time('fetchStreamStatuses');
-        // Twitch API limits to 100 users per request, so chunk if necessary
         const chunkSize = 100;
         let liveChannels = [];
         for (let i = 0; i < channels.length; i += chunkSize) {
@@ -331,7 +413,6 @@
           console.log('API response:', data);
           liveChannels = liveChannels.concat(data.data.map(stream => stream.user_login.toLowerCase()));
         }
-        // Update streamStatuses cache
         streamStatuses = {};
         channels.forEach(channel => {
           streamStatuses[channel] = liveChannels.includes(channel.toLowerCase());
@@ -344,12 +425,47 @@
         errorMessage.textContent = 'Failed to fetch live streams. Showing all streams.';
         errorMessage.style.display = 'block';
         setTimeout(() => { errorMessage.style.display = 'none'; }, 5000);
-        // Fallback: assume all streams are offline
         channels.forEach(channel => {
           streamStatuses[channel] = false;
         });
         return streamStatuses;
       }
+    }
+
+    // Populate chat channel dropdown
+    function populateChatDropdown() {
+      const select = document.getElementById('chat-channel-select');
+      select.innerHTML = '<option value="">Select Channel Chat</option>';
+      const visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel));
+      visibleChannels.forEach((channel, index) => {
+        const option = document.createElement('option');
+        option.value = channel;
+        option.textContent = `Match ${index + 1}: ${channel}`;
+        select.appendChild(option);
+      });
+      // Set selected channel
+      select.value = currentChatChannel && visibleChannels.includes(currentChatChannel) ? currentChatChannel : (visibleChannels[0] || '');
+      updateChat();
+      console.log('Chat dropdown options:', select.options.length);
+    }
+
+    // Update chat iframe
+    function updateChat() {
+      const select = document.getElementById('chat-channel-select');
+      const channel = select.value;
+      const iframe = document.getElementById('chat-iframe');
+      if (channel) {
+        currentChatChannel = channel;
+        iframe.src = `https://www.twitch.tv/embed/${encodeURIComponent(channel)}/chat?parent=${window.location.hostname}`;
+      } else {
+        iframe.src = 'about:blank';
+      }
+    }
+
+    // Toggle chat panel on mobile
+    function toggleChat() {
+      const chatPanel = document.getElementById('chat-panel');
+      chatPanel.classList.toggle('active');
     }
 
     async function renderStreams() {
@@ -360,7 +476,6 @@
       loading.style.display = 'block';
       errorMessage.style.display = 'none';
 
-      // Fetch stream statuses if showLiveOnly is enabled
       let visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel));
       if (showLiveOnly) {
         await fetchStreamStatuses(channels);
@@ -381,13 +496,13 @@
         streamBox.id = `stream-${streamIndex}`;
         streamBox.innerHTML = `
           <div class="stream-label">Match ${streamIndex}</div>
-          <iframe class="stream-player" src="https://player.twitch.tv/?channel=${channel}&parent=${window.location.hostname}" allowfullscreen="true"></iframe>
+          <iframe class="stream-player" src="https://player.twitch.tv/?channel=${encodeURIComponent(channel)}&parent=${window.location.hostname}" allowfullscreen="true"></iframe>
         `;
         streamContainer.appendChild(streamBox);
       });
       populateRemoveDropdown();
       populateFilterCheckboxes();
-      // Update live-only checkbox state
+      populateChatDropdown();
       document.getElementById('live-only').checked = showLiveOnly;
       loading.style.display = 'none';
     }
@@ -428,6 +543,11 @@
         return;
       }
 
+      if (!isValidTwitchChannel(channelName)) {
+        alert('Invalid Twitch channel name. Use 4-25 alphanumeric characters or underscores.');
+        return;
+      }
+
       if (channels.includes(channelName)) {
         alert('This channel is already added.');
         return;
@@ -456,8 +576,12 @@
         return;
       }
 
+      const removedChannel = channels[selectedIndex - 1];
       channels.splice(selectedIndex - 1, 1);
       streamCount--;
+      if (currentChatChannel === removedChannel) {
+        currentChatChannel = channels[0] || '';
+      }
       saveChannels();
       renderStreams();
 
@@ -481,6 +605,9 @@
         return;
       }
       hiddenChannels = [...new Set([...hiddenChannels, ...selectedChannels])];
+      if (selectedChannels.includes(currentChatChannel)) {
+        currentChatChannel = channels.filter(ch => !hiddenChannels.includes(ch))[0] || '';
+      }
       saveChannels();
       renderStreams();
 
@@ -498,6 +625,7 @@
       renderStreams();
 
       const feedback = document.getElementById('add-feedback');
+      feedback.textContent = 'Showing all streams!';
       feedback.style.display = 'inline';
       setTimeout(() => {
         feedback.style.display = 'none';
