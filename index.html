@@ -319,7 +319,7 @@
         </div>
       </div>
       <div class="donation-section">
-        <p>Support the Tribes 3: Rivals Tournament!</p>
+        <p>Support the Tribes 3: Rivals Multi Display!</p>
         <form action="https://www.paypal.com/ncp/payment/BC4EF2QC9T5GA" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;">
           <input class="pp-BC4EF2QC9T5GA" type="submit" value="Support the Tribes Rivals Multi Display" />
           <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
@@ -351,7 +351,7 @@
       'seansguitarworldbang', 'prizzo4real', 'apcizzle', 'slowpok3', 'iamyougaming',
       'mastinmusic', 'wholuvsdean', 'more_horchata', 'prj_tv', 'o0oO_Live',
       'lordbuschguy', 'gnome827', 'cloutac'
-    ];
+    ].sort(); // Sort channels alphabetically
     console.log('Channels length:', channels.length);
     let streamCount = channels.length;
     let hiddenChannels = JSON.parse(localStorage.getItem('hiddenChannels')) || [];
@@ -372,7 +372,7 @@
       const streamContainer = document.getElementById('stream-container');
       streamContainer.innerHTML = '';
 
-      const visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel));
+      const visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel)).sort();
       console.log('Visible channels length:', visibleChannels.length);
       visibleChannels.forEach((channel, index) => {
         const streamIndex = index + 1;
@@ -394,7 +394,7 @@
     function populateRemoveDropdown() {
       const select = document.getElementById('remove-match-select');
       select.innerHTML = '<option value="">Select Match to Remove</option>';
-      channels.forEach((channel, index) => {
+      channels.sort().forEach((channel, index) => {
         const option = document.createElement('option');
         option.value = index + 1;
         option.textContent = `Match ${index + 1}: ${channel}`;
@@ -407,7 +407,7 @@
     function populateFilterCheckboxes() {
       const container = document.getElementById('filter-checkboxes');
       container.innerHTML = '';
-      channels.forEach((channel, index) => {
+      channels.sort().forEach((channel, index) => {
         const div = document.createElement('div');
         div.className = 'checkbox-item';
         div.innerHTML = `
@@ -423,7 +423,7 @@
     function populateChatDropdown() {
       const select = document.getElementById('chat-channel-select');
       select.innerHTML = '<option value="">Select Channel Chat</option>';
-      const visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel));
+      const visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel)).sort();
       visibleChannels.forEach((channel, index) => {
         const option = document.createElement('option');
         option.value = channel;
@@ -475,6 +475,7 @@
 
       streamCount++;
       channels.push(channelName);
+      channels.sort(); // Sort after adding new channel
       saveChannels();
       renderStreams();
 
@@ -498,6 +499,7 @@
 
       const removedChannel = channels[selectedIndex - 1];
       channels.splice(selectedIndex - 1, 1);
+      channels.sort(); // Sort after removing channel
       streamCount--;
       if (currentChatChannel === removedChannel) {
         currentChatChannel = channels[0] || '';
