@@ -341,81 +341,38 @@
 
   <script src="https://embed.twitch.tv/embed/v1.js"></script>
   <script>
-    // Note: No API credentials or live stream filtering
-    let channels = JSON.parse(localStorage.getItem('twitchChannels') || '[]')
-      .map(ch => ch.toLowerCase())
-      .map(ch => {
-        // Preserve exact case for display (e.g., Oo0oO_Live)
-        const originalMap = {
-          'oo0oo_live': 'Oo0oO_Live',
-          'twitch': 'twitch',
-          'shroud': 'shroud',
-          'playb0x': 'playb0x',
-          'cheezecaek': 'cheezecaek',
-          'ta_vorpalkitty': 'ta_vorpalkitty',
-          'bschrift': 'bschrift',
-          'heavenlyjive': 'heavenlyjive',
-          'z4t01': 'z4t01',
-          'wrigglespk': 'wrigglespk',
-          'karolk10': 'karolk10',
-          'splitsecondta': 'splitsecondta',
-          'operationcats': 'operationcats',
-          'simmons572': 'simmons572',
-          'tritiumjones': 'tritiumjones',
-          'beldarkk': 'beldarkk',
-          'skrooner': 'skrooner',
-          'mikesters17': 'mikesters17',
-          'dreadtitan': 'dreadtitan',
-          'visisgaming': 'visisgaming',
-          'pandoracast': 'pandoracast',
-          'isoitiro': 'isoitiro',
-          'vaxitylol': 'vaxitylol',
-          'seansguitarworldbang': 'seansguitarworldbang',
-          'prizzo4real': 'prizzo4real',
-          'apcizzle': 'apcizzle',
-          'slowpok3': 'slowpok3',
-          'iamyougaming': 'iamyougaming',
-          'mastinmusic': 'mastinmusic',
-          'wholuvsdean': 'wholuvsdean',
-          'more_horchata': 'more_horchata',
-          'prj_tv': 'prj_tv',
-          'lordbuschguy': 'lordbuschguy',
-          'gnome827': 'gnome827',
-          'cloutac': 'cloutac'
-        
-        };
-        return originalMap[ch] || ch;
-      }) || [
+    // Note: No API credentials or live stream filtering (removed for simplicity)
+    let channels = JSON.parse(localStorage.getItem('twitchChannels')) || [
       'twitch', 'shroud',
       'playb0x', 'cheezecaek', 'ta_vorpalkitty', 'bschrift', 'heavenlyjive',
       'z4t01', 'wrigglespk', 'karolk10', 'splitsecondta', 'operationcats',
       'simmons572', 'tritiumjones', 'beldarkk', 'skrooner', 'mikesters17',
       'dreadtitan', 'visisgaming', 'pandoracast', 'isoitiro', 'vaxitylol',
       'seansguitarworldbang', 'prizzo4real', 'apcizzle', 'slowpok3', 'iamyougaming',
-      'mastinmusic', 'wholuvsdean', 'more_horchata', 'Oo0oO_Live', 'lordbuschguy',
-      'gnome827', 'cloutac'
+      'mastinmusic', 'wholuvsdean', 'more_horchata', 'prj_tv', 'o0oO_Live',
+      'lordbuschguy', 'gnome827', 'cloutac'
     ];
     console.log('Channels length:', channels.length);
     let streamCount = channels.length;
-    let hiddenChannels = JSON.parse(localStorage.getItem('hiddenChannels') || '[]').map(ch => ch.toLowerCase());
+    let hiddenChannels = JSON.parse(localStorage.getItem('hiddenChannels')) || [];
     let currentChatChannel = channels[0] || 'twitch'; // Default to first channel
 
     function saveChannels() {
-      localStorage.setItem('twitchChannels', JSON.stringify(channels.map(ch => ch.toLowerCase())));
+      localStorage.setItem('twitchChannels', JSON.stringify(channels));
       localStorage.setItem('hiddenChannels', JSON.stringify(hiddenChannels));
     }
 
-    // Validate Twitch channel name (case-insensitive)
+    // Validate Twitch channel name
     function isValidTwitchChannel(channel) {
-      return /^[a-zA-Z0-9_]{4,25}$/i.test(channel);
+      return /^[a-zA-Z0-9_]{4,25}$/.test(channel);
     }
 
-    // Render streams (alphabetized)
+    // Render streams (no API calls)
     function renderStreams() {
       const streamContainer = document.getElementById('stream-container');
       streamContainer.innerHTML = '';
 
-      const visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel.toLowerCase())).sort();
+      const visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel));
       console.log('Visible channels length:', visibleChannels.length);
       visibleChannels.forEach((channel, index) => {
         const streamIndex = index + 1;
@@ -433,11 +390,11 @@
       populateChatDropdown();
     }
 
-    // Populate remove dropdown (alphabetized)
+    // Populate remove dropdown
     function populateRemoveDropdown() {
       const select = document.getElementById('remove-match-select');
       select.innerHTML = '<option value="">Select Match to Remove</option>';
-      channels.sort().forEach((channel, index) => {
+      channels.forEach((channel, index) => {
         const option = document.createElement('option');
         option.value = index + 1;
         option.textContent = `Match ${index + 1}: ${channel}`;
@@ -446,27 +403,27 @@
       console.log('Remove dropdown options:', select.options.length);
     }
 
-    // Populate filter checkboxes (alphabetized)
+    // Populate filter checkboxes
     function populateFilterCheckboxes() {
       const container = document.getElementById('filter-checkboxes');
       container.innerHTML = '';
-      channels.sort().forEach((channel, index) => {
+      channels.forEach((channel, index) => {
         const div = document.createElement('div');
         div.className = 'checkbox-item';
         div.innerHTML = `
-          <input type="checkbox" id="filter-${channel.toLowerCase()}" value="${channel}">
-          <label for="filter-${channel.toLowerCase()}">Match ${index + 1}: ${channel}</label>
+          <input type="checkbox" id="filter-${channel}" value="${channel}">
+          <label for="filter-${channel}">Match ${index + 1}: ${channel}</label>
         `;
         container.appendChild(div);
       });
       console.log('Filter checkboxes count:', container.children.length);
     }
 
-    // Populate chat channel dropdown (alphabetized)
+    // Populate chat channel dropdown
     function populateChatDropdown() {
       const select = document.getElementById('chat-channel-select');
       select.innerHTML = '<option value="">Select Channel Chat</option>';
-      const visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel.toLowerCase())).sort();
+      const visibleChannels = channels.filter(channel => !hiddenChannels.includes(channel));
       visibleChannels.forEach((channel, index) => {
         const option = document.createElement('option');
         option.value = channel;
@@ -499,8 +456,7 @@
 
     function addStreamer() {
       const newStreamerInput = document.getElementById('new-streamer');
-      const channelName = newStreamerInput.value.trim();
-      const lowercaseChannel = channelName.toLowerCase();
+      const channelName = newStreamerInput.value.trim().toLowerCase();
 
       if (!channelName) {
         alert('Please enter a Twitch channel name.');
@@ -512,13 +468,12 @@
         return;
       }
 
-      if (channels.map(ch => ch.toLowerCase()).includes(lowercaseChannel)) {
+      if (channels.includes(channelName)) {
         alert('This channel is already added.');
         return;
       }
 
       streamCount++;
-      // Preserve original case for display, store lowercase for comparison
       channels.push(channelName);
       saveChannels();
       renderStreams();
@@ -569,9 +524,9 @@
         alert('Please select at least one channel to hide.');
         return;
       }
-      hiddenChannels = [...new Set([...hiddenChannels, ...selectedChannels.map(ch => ch.toLowerCase())])];
-      if (selectedChannels.map(ch => ch.toLowerCase()).includes(currentChatChannel.toLowerCase())) {
-        currentChatChannel = channels.filter(ch => !hiddenChannels.includes(ch.toLowerCase()))[0] || '';
+      hiddenChannels = [...new Set([...hiddenChannels, ...selectedChannels])];
+      if (selectedChannels.includes(currentChatChannel)) {
+        currentChatChannel = channels.filter(ch => !hiddenChannels.includes(ch))[0] || '';
       }
       saveChannels();
       renderStreams();
